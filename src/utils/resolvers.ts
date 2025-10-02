@@ -38,6 +38,29 @@ export async function resolveGenderId(
   throw new Error(`No gender matched "${genderName}". If Monica requires a gender, please provide either genderId or genderName with a valid gender (e.g., "Male", "Female", "Rather not say").`);
 }
 
+export async function resolveGenderNameById(
+  client: MonicaClient,
+  genderId: number
+): Promise<string> {
+  let page = 1;
+
+  while (true) {
+    const response = await client.listGenders(100, page);
+    const match = response.data.find((gender) => gender.id === genderId);
+    if (match) {
+      return match.name;
+    }
+
+    if (response.meta.current_page >= response.meta.last_page) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  throw new Error(`No gender matched ID ${genderId}.`);
+}
+
 export async function resolveCountryId(
   client: MonicaClient,
   options: {
@@ -64,8 +87,13 @@ export async function resolveCountryId(
   let page = 1;
 
   while (true) {
-    const response = await client.listCountries(250, page);
-    const match = response.data.find((country) => {
+    const response = await client.listCountries(100, page);
+
+    // Monica's countries endpoint returns data as an object with ISO codes as keys,
+    // not as an array like other endpoints
+    const countries = Object.values(response.data);
+
+    const match = countries.find((country) => {
       if (targetIso && country.iso?.toLowerCase() === targetIso) {
         return true;
       }
@@ -152,6 +180,7 @@ export async function resolveActivityTypeId(
 
   const target = normalizeLookupValue(activityTypeName);
   let page = 1;
+  const suggestions = new Map<string, string>();
 
   while (true) {
     const response = await client.listActivityTypes({ limit: 100, page });
@@ -161,6 +190,17 @@ export async function resolveActivityTypeId(
       return match.id;
     }
 
+    for (const type of response.data) {
+      const normalizedName = normalizeLookupValue(type.name);
+      if (
+        normalizedName.includes(target) ||
+        target.includes(normalizedName) ||
+        type.name.toLowerCase().includes(target)
+      ) {
+        suggestions.set(type.name, type.name);
+      }
+    }
+
     if (response.meta.current_page >= response.meta.last_page) {
       break;
     }
@@ -168,7 +208,14 @@ export async function resolveActivityTypeId(
     page += 1;
   }
 
-  throw new Error(`No activity type matched "${activityTypeName}".`);
+  const suggestionList = Array.from(suggestions.values()).slice(0, 5);
+  const suggestionText = suggestionList.length
+    ? ` Similar activity types available: ${suggestionList.join(', ')}.`
+    : '';
+  const guidance =
+    ' Use `monica_browse_metadata` or `monica_manage_activity_type` to review valid activity type names.';
+
+  throw new Error(`No activity type matched "${activityTypeName}".${suggestionText}${guidance}`);
 }
 
 export async function resolveRelationshipTypeId(

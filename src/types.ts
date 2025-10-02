@@ -21,6 +21,13 @@ export interface MonicaPaginatedResponse<T> {
   meta: MonicaPaginationMeta;
 }
 
+// Countries endpoint returns data as an object with ISO codes as keys, not an array
+export interface MonicaCountriesResponse {
+  data: Record<string, MonicaCountry>;
+  links: MonicaPaginationLinks;
+  meta: MonicaPaginationMeta;
+}
+
 export interface MonicaContactInformation {
   dates?: Array<{
     name: string;
@@ -59,6 +66,7 @@ export interface MonicaContact {
   created_at?: string;
   updated_at?: string;
   contactFields?: MonicaContactField[];
+  tags?: MonicaTag[];
 }
 
 export interface MonicaTask {

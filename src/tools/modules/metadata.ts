@@ -84,7 +84,7 @@ async function fetchResource({ client, resource, limit, page }: FetchResourceArg
     case 'countries': {
       const response = await client.listCountries(limit, page);
       return {
-        items: response.data.map(normalizeCountry),
+        items: Object.values(response.data).map(normalizeCountry),
         meta: normalizeMeta(response.meta)
       };
     }

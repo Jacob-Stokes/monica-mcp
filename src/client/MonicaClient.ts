@@ -1,6 +1,7 @@
 import type { Logger } from 'pino';
 import {
   MonicaPaginatedResponse,
+  MonicaCountriesResponse,
   MonicaContact,
   MonicaNote,
   MonicaSingleResponse,
@@ -59,6 +60,15 @@ export interface ListTasksOptions {
   limit?: number;
   page?: number;
   status?: 'open' | 'completed' | 'all';
+}
+
+export interface ListContactsOptions {
+  limit?: number;
+  page?: number;
+  includePartial?: boolean;
+  includeContactFields?: boolean;
+  includeTags?: boolean;
+  includeAddresses?: boolean;
 }
 
 export interface ListRelationshipsOptions {
@@ -441,6 +451,30 @@ export class MonicaClient {
     }
 
     return response;
+  }
+
+  async listContacts(options: ListContactsOptions = {}): Promise<MonicaPaginatedResponse<MonicaContact>> {
+    const withParts: string[] = [];
+    if (options.includeContactFields) {
+      withParts.push('contactfields');
+    }
+    if (options.includeTags) {
+      withParts.push('tags');
+    }
+    if (options.includeAddresses) {
+      withParts.push('addresses');
+    }
+
+    const searchParams: Record<string, string | number | undefined> = {
+      limit: options.limit,
+      page: options.page,
+      with: withParts.length ? withParts.join(',') : undefined,
+      include_partial: options.includePartial ? 1 : undefined
+    };
+
+    return this.request<MonicaPaginatedResponse<MonicaContact>>('contacts', {
+      searchParams
+    });
   }
 
   async getContact(id: number, includeContactFields = false): Promise<MonicaSingleResponse<MonicaContact>> {
@@ -1061,8 +1095,8 @@ export class MonicaClient {
     });
   }
 
-  async listCountries(limit?: number, page?: number): Promise<MonicaPaginatedResponse<MonicaCountry>> {
-    return this.request<MonicaPaginatedResponse<MonicaCountry>>('countries', {
+  async listCountries(limit?: number, page?: number): Promise<MonicaCountriesResponse> {
+    return this.request<MonicaCountriesResponse>('countries', {
       searchParams: {
         limit,
         page
@@ -1367,6 +1401,15 @@ export class MonicaClient {
     });
   }
 
+
+  async listContactTags(contactId: number): Promise<MonicaTag[]> {
+    const response = await this.request<MonicaSingleResponse<MonicaContact>>(`contacts/${contactId}`, {
+      searchParams: { with: 'tags' }
+    });
+
+    return response.data.tags ?? [];
+  }
+
   async updateTag(tagId: number, payload: UpdateTagPayload): Promise<MonicaSingleResponse<MonicaTag>> {
     const body = buildTagRequestBody(payload);
     return this.request<MonicaSingleResponse<MonicaTag>>(`tags/${tagId}`, {
@@ -1378,6 +1421,28 @@ export class MonicaClient {
   async deleteTag(tagId: number): Promise<MonicaDeleteResponse> {
     return this.request<MonicaDeleteResponse>(`tags/${tagId}`, {
       method: 'DELETE'
+    });
+  }
+
+  async setContactTags(contactId: number, tags: string[]): Promise<MonicaSingleResponse<MonicaContact>> {
+    if (!tags.length) {
+      throw new Error('Provide at least one tag name when setting tags on a contact.');
+    }
+
+    return this.request<MonicaSingleResponse<MonicaContact>>(`contacts/${contactId}/setTags`, {
+      method: 'POST',
+      body: JSON.stringify({ tags })
+    });
+  }
+
+  async unsetContactTags(contactId: number, tagIds: number[]): Promise<MonicaSingleResponse<MonicaContact>> {
+    if (!tagIds.length) {
+      throw new Error('Provide at least one tagId when removing tags from a contact.');
+    }
+
+    return this.request<MonicaSingleResponse<MonicaContact>>(`contacts/${contactId}/unsetTag`, {
+      method: 'POST',
+      body: JSON.stringify({ tags: tagIds })
     });
   }
 
@@ -1467,6 +1532,15 @@ export class MonicaClient {
     };
 
     try {
+      this.logger.debug(
+        {
+          method: (requestInit.method ?? 'GET').toUpperCase(),
+          url: url.pathname,
+          query: url.search ? url.search.slice(1) : undefined
+        },
+        'Monica API request started'
+      );
+
       const response = await fetch(url, requestInit);
       const requestId = response.headers.get('x-request-id');
       const text = await response.text();
@@ -1491,6 +1565,16 @@ export class MonicaClient {
         );
       }
 
+      this.logger.info(
+        {
+          method: (requestInit.method ?? 'GET').toUpperCase(),
+          url: url.pathname,
+          status: response.status,
+          requestId
+        },
+        'Monica API request completed'
+      );
+
       return data as T;
     } catch (error) {
       if (error instanceof MonicaApiError) {
@@ -1498,6 +1582,13 @@ export class MonicaClient {
       }
 
       if ((error as Error).name === 'AbortError') {
+        this.logger.warn(
+          {
+            method: (requestInit.method ?? 'GET').toUpperCase(),
+            url: url.pathname
+          },
+          'Monica API request timed out'
+        );
         throw new Error(`Monica API request to ${url.pathname} timed out.`);
       }
 
@@ -1671,14 +1762,32 @@ function buildConversationMessageRequestBody(
 }
 
 function buildReminderRequestBody(payload: CreateReminderPayload): Record<string, unknown> {
-  return {
+  const nextExpectedDate = normalizeReminderDate(payload.nextExpectedDate);
+  const body: Record<string, unknown> = {
     title: payload.title,
     description: toNull(payload.description ?? null),
-    next_expected_date: payload.nextExpectedDate,
+    next_expected_date: nextExpectedDate,
     frequency_type: payload.frequencyType,
-    frequency_number: payload.frequencyNumber ?? null,
     contact_id: payload.contactId
   };
+
+  if (payload.frequencyNumber != null) {
+    body.frequency_number = payload.frequencyNumber;
+  }
+
+  return body;
+}
+
+function normalizeReminderDate(date: string): string {
+  if (!date) {
+    return date;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/u.test(date)) {
+    return `${date}T00:00:00`;
+  }
+
+  return date;
 }
 
 function buildRelationshipCreateRequestBody(payload: CreateRelationshipPayload) {

@@ -78,16 +78,19 @@ For development, you can swap `node dist/index.js` with `npm run dev --silent` t
 
 ## Tools exposed
 
-This Monica MCP server provides **17 tools** covering the most common CRM operations:
+This Monica MCP server provides **21 tools** covering the most common CRM operations:
 
 | Tool | Purpose |
 | --- | --- |
 | **Core Contact Management** | |
 | `monica_search_contacts` | Search Monica CRM contacts by name, nickname, or email. Returns contact IDs and basic info for downstream tools. |
+| `monica_list_contacts` | Retrieve paginated contact lists without a search query. Supports multiple detail tiers and optional filters (gender, tags, communication touch points). |
 | `monica_manage_contact` | Retrieve summaries or manage profile fields, communication details, and addresses with a single `section` parameter. |
 | `monica_manage_contact_profile` | Simplified wrapper to create/update/delete contact profiles (delegates to `monica_manage_contact` with `section="profile"`). |
 | `monica_manage_contact_field` | Simplified wrapper to list/get/create/update/delete contact fields like email and phone (delegates to `monica_manage_contact` with `section="field"`). |
 | `monica_manage_contact_address` | Simplified wrapper to list/get/create/update/delete contact addresses (delegates to `monica_manage_contact` with `section="address"`). |
+| `monica_manage_contact_field_type` | Manage Monica contact field types (list/get/create/update/delete) so you can add new social or custom field types like "Instagram". |
+| `monica_manage_contact_tags` | Manage tag assignments for a contact (list/append/remove) so you can attach labels like "Close Friend". |
 | **Communication & Interactions** | |
 | `monica_manage_conversation` | Manage conversations and their messages (list/get/create/update/delete plus message add/update/remove). Channel can be supplied by ID or name. |
 | `monica_manage_call` | Log calls with contacts (list/get/create/update/delete) to capture quick phone notes. |
@@ -103,6 +106,7 @@ This Monica MCP server provides **17 tools** covering the most common CRM operat
 | `monica_manage_group` | List, inspect, create, update, or delete contact groups and review their members. |
 | `monica_manage_tag` | List, inspect, create, update, or delete tags used to categorize contacts. |
 | **Metadata & System** | |
+| `monica_manage_activity_type` | Manage Monica activity types (list/get/create/update/delete) so you can add entries like "Meal" before logging activities. |
 | `monica_browse_metadata` | Browse Monica catalogs (genders, countries, contact field types, activity types, relationship types) with optional name filtering. |
 | `monica_health_check` | Verify that the configured Monica credentials work. |
 
@@ -118,6 +122,7 @@ Each resource supports auto-complete on `contactId` via Monica search so assista
 - Structured logging via `pino`, with token redaction.
 - Requests run with a 15s timeout by default.
 - Errors from Monica are wrapped as tool outputs (not protocol errors) so assistants can self-correct.
+- Set `MCP_LOG_FILE=/path/to/monica-mcp.log` if you want the server to mirror logs to disk while keeping stdout clean for MCP.
 
 ## Next steps
 1. Expand tool coverage (activities, reminders, gifts) as needed.

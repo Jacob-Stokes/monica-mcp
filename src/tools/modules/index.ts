@@ -5,6 +5,10 @@
 export { registerSearchTools } from './search.js';
 export { registerContactTools } from './contacts.js';
 export { registerContactWrapperTools } from './contactWrappers.js';
+export { registerContactListTools } from './contactList.js';
+export { registerContactFieldTypeTools } from './contactFieldTypes.js';
+export { registerContactTagTools } from './contactTags.js';
+export { registerActivityTypeTools } from './activityTypes.js';
 export { registerActivityTools } from './activities.js';
 export { registerCommunicationTools } from './communications.js';
 export { registerGroupTools } from './groups.js';

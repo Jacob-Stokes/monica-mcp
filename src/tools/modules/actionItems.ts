@@ -5,8 +5,10 @@ import type {
   UpdateReminderPayload,
   UpdateTaskPayload
 } from '../../client/MonicaClient.js';
+import { MonicaApiError } from '../../client/MonicaClient.js';
 import type { ToolRegistrationContext } from '../context.js';
 import { normalizeReminder, normalizeTask } from '../../utils/formatters.js';
+import { buildErrorResponse } from '../../utils/responseHelpers.js';
 
 const taskPayloadSchema = z.object({
   title: z.string().min(1).max(255).optional(),
@@ -343,23 +345,30 @@ async function handleReminderAction({
         };
       }
 
-      const response = await client.createReminder(createPayload);
-      const reminder = normalizeReminder(response.data);
-      logger.info({ reminderId: reminder.id, contactId: reminder.contactId }, 'Created Monica reminder');
+      try {
+        const response = await client.createReminder(createPayload);
+        const reminder = normalizeReminder(response.data);
+        logger.info({ reminderId: reminder.id, contactId: reminder.contactId }, 'Created Monica reminder');
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Created reminder "${reminder.title}" for contact ${reminder.contactId}.`
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Created reminder "${reminder.title}" for contact ${reminder.contactId}.`
+            }
+          ],
+          structuredContent: {
+            itemType: input.itemType,
+            action: input.action,
+            reminder
           }
-        ],
-        structuredContent: {
-          itemType: input.itemType,
-          action: input.action,
-          reminder
+        };
+      } catch (error) {
+        if (error instanceof MonicaApiError) {
+          return buildErrorResponse(formatMonicaApiError(error));
         }
-      };
+        throw error;
+      }
     }
 
     case 'update': {
@@ -376,44 +385,58 @@ async function handleReminderAction({
         };
       }
 
-      const response = await client.updateReminder(input.reminderId!, updatePayload);
-      const reminder = normalizeReminder(response.data);
-      logger.info({ reminderId: input.reminderId }, 'Updated Monica reminder');
+      try {
+        const response = await client.updateReminder(input.reminderId!, updatePayload);
+        const reminder = normalizeReminder(response.data);
+        logger.info({ reminderId: input.reminderId }, 'Updated Monica reminder');
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Updated reminder "${reminder.title}" (ID ${reminder.id}).`
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Updated reminder "${reminder.title}" (ID ${reminder.id}).`
+            }
+          ],
+          structuredContent: {
+            itemType: input.itemType,
+            action: input.action,
+            reminderId: input.reminderId,
+            reminder
           }
-        ],
-        structuredContent: {
-          itemType: input.itemType,
-          action: input.action,
-          reminderId: input.reminderId,
-          reminder
+        };
+      } catch (error) {
+        if (error instanceof MonicaApiError) {
+          return buildErrorResponse(formatMonicaApiError(error));
         }
-      };
+        throw error;
+      }
     }
 
     case 'delete': {
-      const result = await client.deleteReminder(input.reminderId!);
-      logger.info({ reminderId: input.reminderId }, 'Deleted Monica reminder');
+      try {
+        const result = await client.deleteReminder(input.reminderId!);
+        logger.info({ reminderId: input.reminderId }, 'Deleted Monica reminder');
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Deleted reminder ID ${input.reminderId}.`
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Deleted reminder ID ${input.reminderId}.`
+            }
+          ],
+          structuredContent: {
+            itemType: input.itemType,
+            action: input.action,
+            reminderId: input.reminderId,
+            result
           }
-        ],
-        structuredContent: {
-          itemType: input.itemType,
-          action: input.action,
-          reminderId: input.reminderId,
-          result
+        };
+      } catch (error) {
+        if (error instanceof MonicaApiError) {
+          return buildErrorResponse(formatMonicaApiError(error));
         }
-      };
+        throw error;
+      }
     }
 
     default:
@@ -452,12 +475,17 @@ function toReminderCreatePayload(payload: ReminderPayloadForm): CreateReminderPa
     throw new Error('Provide frequencyType when creating a reminder.');
   }
 
+  const frequencyNumber =
+    payload.frequencyType === 'one_time'
+      ? undefined
+      : payload.frequencyNumber ?? 1;
+
   return {
     title: payload.title || 'Stay in touch',
     description: payload.description ?? null,
     nextExpectedDate: payload.nextExpectedDate,
     frequencyType: payload.frequencyType,
-    frequencyNumber: payload.frequencyNumber ?? null,
+    frequencyNumber,
     contactId: payload.contactId
   };
 }
@@ -485,6 +513,44 @@ function toReminderUpdatePayload(payload: ReminderPayloadForm): UpdateReminderPa
   }
 
   return result;
+}
+
+function formatMonicaApiError(error: MonicaApiError): string {
+  const details = extractMonicaErrorDetails(error.data);
+  const requestSuffix = error.requestId ? ` (request id ${error.requestId})` : '';
+  return details ? `${error.message}${requestSuffix}. ${details}` : `${error.message}${requestSuffix}.`;
+}
+
+function extractMonicaErrorDetails(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== 'object') {
+    return undefined;
+  }
+
+  const record = payload as Record<string, unknown>;
+  const segments: string[] = [];
+
+  if (typeof record.message === 'string' && record.message.trim()) {
+    segments.push(record.message.trim());
+  }
+
+  const errors = record.errors;
+  if (errors && typeof errors === 'object') {
+    for (const [field, explanation] of Object.entries(errors as Record<string, unknown>)) {
+      if (Array.isArray(explanation)) {
+        const joined = explanation
+          .map((entry) => (typeof entry === 'string' ? entry.trim() : String(entry)))
+          .filter(Boolean)
+          .join('; ');
+        if (joined) {
+          segments.push(`${field}: ${joined}`);
+        }
+      } else if (typeof explanation === 'string' && explanation.trim()) {
+        segments.push(`${field}: ${explanation.trim()}`);
+      }
+    }
+  }
+
+  return segments.length ? segments.join(' ') : undefined;
 }
 
 function unreachable(value: never): never {

@@ -2,7 +2,11 @@ import type { ToolRegistrationContext } from './context.js';
 import {
   registerSearchTools,
   registerContactTools,
+  registerContactListTools,
   registerContactWrapperTools,
+  registerContactFieldTypeTools,
+  registerContactTagTools,
+  registerActivityTypeTools,
   registerActivityTools,
   registerCommunicationTools,
   registerGroupTools,
@@ -20,7 +24,11 @@ export type { ToolRegistrationContext } from './context.js';
 export function registerTools(context: ToolRegistrationContext): void {
   registerSearchTools(context);
   registerContactTools(context);
+  registerContactListTools(context);
   registerContactWrapperTools(context);
+  registerContactFieldTypeTools(context);
+  registerContactTagTools(context);
+  registerActivityTypeTools(context);
   registerActivityTools(context);
   registerCommunicationTools(context);
   registerGroupTools(context);

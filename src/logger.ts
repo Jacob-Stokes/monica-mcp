@@ -1,32 +1,61 @@
-import { destination, pino, transport as buildTransport } from 'pino';
+import { pino, transport as buildTransport } from 'pino';
 import { appConfig } from './config.js';
 
 // Disable logging when running via stdio to avoid interfering with MCP protocol
-const shouldLog = process.env.MCP_DISABLE_LOGS !== 'true' && !process.argv.includes('--silent');
+const shouldLogToConsole = process.env.MCP_DISABLE_LOGS !== 'true' && !process.argv.includes('--silent');
+const logFilePath = process.env.MCP_LOG_FILE;
 
 const loggerDestination = (() => {
-  if (!shouldLog) {
-    return null;
+  const targets: Array<{
+    target: string;
+    options: Record<string, unknown>;
+    level?: string;
+  }> = [];
+
+  if (shouldLogToConsole) {
+    const isPretty = process.env.NODE_ENV !== 'production' && process.stderr.isTTY;
+
+    if (isPretty) {
+      targets.push({
+        target: 'pino-pretty',
+        options: {
+          translateTime: 'SYS:standard',
+          colorize: true,
+          ignore: 'pid,hostname',
+          destination: 2
+        }
+      });
+    } else {
+      targets.push({
+        target: 'pino/file',
+        options: {
+          destination: 2,
+          mkdir: false,
+          append: true
+        }
+      });
+    }
   }
 
-  const isPretty = process.env.NODE_ENV !== 'production' && process.stderr.isTTY;
-
-  if (isPretty) {
-    return buildTransport({
-      target: 'pino-pretty',
+  if (logFilePath) {
+    targets.push({
+      target: 'pino/file',
       options: {
-        translateTime: 'SYS:standard',
-        colorize: true,
-        ignore: 'pid,hostname',
-        destination: 2
+        destination: logFilePath,
+        mkdir: true,
+        append: true
       }
     });
   }
 
-  return destination({ fd: process.stderr.fd, sync: false });
+  if (targets.length === 0) {
+    return null;
+  }
+
+  return buildTransport({ targets });
 })();
 
-export const logger = shouldLog
+export const logger = loggerDestination
   ? pino(
       {
         level: appConfig.logLevel,
@@ -36,7 +65,7 @@ export const logger = shouldLog
           remove: true
         }
       },
-      loggerDestination ?? undefined
+      loggerDestination
     )
   : ({
       info: () => {},

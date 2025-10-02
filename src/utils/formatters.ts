@@ -47,7 +47,8 @@ export function normalizeContactDetail(contact: MonicaContact) {
     dates: contact.information?.dates ?? [],
     createdAt: contact.created_at,
     updatedAt: contact.updated_at,
-    customFields: rawContactFields.map(normalizeContactField)
+    customFields: rawContactFields.map(normalizeContactField),
+    tags: contact.tags ? contact.tags.map(normalizeTag) : []
   };
 }
 
@@ -77,6 +78,11 @@ export function buildContactSummary(contact: MonicaContact): string {
 
   if (contact.information?.description) {
     parts.push(`Notes: ${contact.information.description}`);
+  }
+
+  if (contact.tags && contact.tags.length) {
+    const tagNames = contact.tags.map((tag) => tag.name).join(', ');
+    parts.push(`Tags: ${tagNames}`);
   }
 
   return parts.join('\n');
