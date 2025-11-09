@@ -2,6 +2,10 @@
 
 A Model Context Protocol (MCP) server that lets assistants such as Claude Desktop read from and write to any Monica CRM instance. It wraps Monica's REST API with a handful of assistant-friendly tools and resources so you can search contacts, inspect timelines, capture notes, and keep on top of tasks without leaving the chat.
 
+<a href="https://glama.ai/mcp/servers/@Jacob-Stokes/monica-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Jacob-Stokes/monica-mcp/badge" alt="Monica CRM Server MCP server" />
+</a>
+
 ## Features
 - **Contact search & summaries** – find people by name/email and return normalized details with custom fields.
 - **Contact management** – create, update, or delete contacts without leaving the assistant.
