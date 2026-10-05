@@ -38,6 +38,8 @@ How it's built to behave:
 
 Requires Node.js 20.12 or newer, a Monica 4 instance (self-hosted, or monicahq.com) and an API token from it (Settings → API → Create a new token).
 
+To set up Monica and this server together, [monica-server-stack](https://github.com/Jacob-Stokes/monica-server-stack) does it in one Docker Compose project: the account, the API token (renewed before it expires), the scheduler for reminders, and optional HTTPS.
+
 ### Desktop clients (stdio)
 
 Most MCP clients take a configuration like this:
