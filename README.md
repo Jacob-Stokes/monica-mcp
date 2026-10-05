@@ -10,7 +10,7 @@ It targets **Monica 4** (the classic version, 4.1.2 being its latest release), t
 
 | Tool | For |
 |---|---|
-| `monica_contacts` | Search, list, read, create, update and delete contacts. A contact's profile comes with its details, recent notes, activities and reminders. |
+| `monica_contacts` | Search, list, read, create, update and delete contacts, including job, company and how they met. A contact's profile comes with its details, recent notes, activities and reminders. |
 | `monica_contact_info` | Contact fields (email, phone, social profiles), postal addresses and tags. |
 | `monica_relationships` | How contacts are related: partner, parent, friend, colleague… |
 | `monica_notes` | Things to remember about someone. |
