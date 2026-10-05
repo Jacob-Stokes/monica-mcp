@@ -1,36 +1,46 @@
 {
   "name": "monica-crm-mcp",
-  "version": "0.1.0",
-  "description": "Model Context Protocol server that exposes Monica CRM data and actions to assistants like Claude Desktop.",
+  "version": "2.0.0",
+  "description": "MCP server for Monica, the personal CRM (version 4): contacts, notes, activities, reminders and more, for any MCP client.",
   "type": "module",
-  "private": true,
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "bin": {
+    "monica-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc --project tsconfig.build.json",
-    "dev": "tsx watch src/index.ts",
-    "start": "node --enable-source-maps dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc",
+    "prepare": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc && node --test test/*.test.mjs",
+    "e2e": "node scripts/e2e.mjs"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.12"
   },
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "monica",
-    "crm"
+    "crm",
+    "personal-crm"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jacob-Stokes/monica-mcp.git"
+  },
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.2",
-    "dotenv": "^16.4.5",
-    "pino": "^8.17.2",
-    "pino-pretty": "^11.2.2",
-    "zod": "^3.22.4"
+    "jose": "^6.1.0",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
-    "@types/node": "^20.11.24",
-    "tsx": "^4.7.1",
-    "typescript": "^5.4.5"
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0"
   }
 }

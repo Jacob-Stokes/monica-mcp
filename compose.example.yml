@@ -1,0 +1,12 @@
+# monica-mcp next to a Monica instance, as an HTTP service.
+services:
+  monica-mcp:
+    build: https://github.com/Jacob-Stokes/monica-mcp.git#main
+    image: monica-mcp:local
+    restart: unless-stopped
+    environment:
+      MONICA_BASE_URL: http://monica          # the Monica container, on the same network
+      MONICA_API_TOKEN: ${MONICA_API_TOKEN:?}
+      MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN:?} # what MCP clients send
+    ports:
+      - "127.0.0.1:8080:8080"
