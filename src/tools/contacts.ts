@@ -144,7 +144,8 @@ async function extras(ctx: Ctx, id: number, input: any) {
   }
 }
 
-const SORT = { name: "first_name", recently_added: "-created_at", recently_updated: "-updated_at" } as const;
+// Monica's API sorts contacts by when they were added or updated only
+const SORT = { recently_added: "-created_at", recently_updated: "-updated_at" } as const;
 
 async function recent(ctx: Ctx, id: number, kind: string) {
   const path = { fields: "contactfields", notes: "notes", activities: "activities", reminders: "reminders", tasks: "tasks", calls: "calls", conversations: "conversations", gifts: "gifts", debts: "debts" }[kind]!;
@@ -180,6 +181,14 @@ export const contactsTool = tool({
         return { query: input.query, total: res.meta?.total ?? res.data.length, contacts: res.data.map(f.contactSummary) };
       }
       case "list": {
+        if (input.sort === "name") {
+          // by name: fetch them all (a personal CRM's worth) and sort here
+          const all = (await ctx.monica.list("/contacts", {}, 5000)).sort((a: any, b: any) =>
+            String(a.complete_name ?? "").localeCompare(String(b.complete_name ?? ""), undefined, { sensitivity: "base" }),
+          );
+          const start = (input.page - 1) * input.limit;
+          return { page: input.page, pages: Math.max(1, Math.ceil(all.length / input.limit)), total: all.length, contacts: all.slice(start, start + input.limit).map(f.contactSummary) };
+        }
         const res = await ctx.monica.page("/contacts", { page: input.page, limit: input.limit, sort: SORT[input.sort] });
         return { page: input.page, pages: res.meta?.last_page ?? 1, total: res.meta?.total ?? res.data.length, contacts: res.data.map(f.contactSummary) };
       }

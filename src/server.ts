@@ -12,7 +12,7 @@ import { activitiesTool, contactInfoTool, notesTool, relationshipsTool } from ".
 import { callsTool, conversationsTool, giftsDebtsTool, journalTool, remindersTool, tasksTool } from "./tools/keeping-in-touch.js";
 import { mediaTool, referenceTool, statusTool } from "./tools/account.js";
 
-export const VERSION = "2.1.0";
+export const VERSION = "2.1.1";
 
 export const TOOLS: Tool<any>[] = [
   contactsTool,

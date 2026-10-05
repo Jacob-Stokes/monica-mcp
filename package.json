@@ -1,6 +1,6 @@
 {
   "name": "monica-crm-mcp",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "MCP server for Monica, the personal CRM (version 4): contacts, notes, activities, reminders and more, for any MCP client.",
   "type": "module",
   "main": "dist/index.js",
