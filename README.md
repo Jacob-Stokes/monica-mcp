@@ -1,10 +1,12 @@
 # Monica MCP
 
-An MCP server for [Monica](https://www.monicahq.com), the personal CRM: the people in a life, what happened with them, what to remember about them and when to get back in touch, available to any MCP client.
+An MCP server for [Monica](https://www.monicahq.com), the personal CRM: contacts, notes, activities, reminders and more, for any MCP client.
 
 It targets **Monica 4** (the classic version, 4.1.2 being its latest release), through its REST API. Monica 5 is a separate rewrite, still in beta, with a different API.
 
 [![ci](https://github.com/Jacob-Stokes/monica-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Jacob-Stokes/monica-mcp/actions/workflows/ci.yml)
+
+> **Self-hosting Monica as well?** [Monica Server Stack](https://github.com/Jacob-Stokes/monica-server-stack) runs Monica 4 and this server together in one Docker Compose project, with the account and API token set up automatically.
 
 ## What it does
 
