@@ -78,6 +78,7 @@ docker run -d -p 127.0.0.1:8080:8080 \
 |---|---|---|
 | `MONICA_BASE_URL` | `https://app.monicahq.com` | The Monica instance |
 | `MONICA_API_TOKEN` | required | Its API token |
+| `MONICA_API_TOKEN_FILE` | | Instead: a file holding the token, read again when it changes |
 | `MONICA_TOKEN_TYPE` | `bearer` | `apiKey` sends `X-Api-Key`; `legacy` sends `X-Auth-Token` with `MONICA_USER_TOKEN` |
 | `MCP_TRANSPORT` | `stdio` | `http` to serve at `/mcp` |
 | `PORT` | `8080` | HTTP only |
