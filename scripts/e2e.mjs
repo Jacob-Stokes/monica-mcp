@@ -72,6 +72,14 @@ try {
     const u = await call("monica_contacts", { action: "update", contact: A, nickname: "Enchantress", company: "Royal Society" });
     expect(u.nickname === "Enchantress" && u.birthdate === "1815-12-10" && u.job === "Mathematician" && u.company === "Royal Society" && u.gender === "Woman", JSON.stringify(u));
   });
+  await check("contacts how you met: who introduced them and when, kept across updates", async () => {
+    const u = await call("monica_contacts", { action: "update", contact: ada.id, met_through: B, first_met: "1833-06-05" });
+    expect(u.met_through?.id === charles.id && u.first_met === "1833-06-05" && u.how_you_met === "At a soirée", JSON.stringify(u));
+    const v = await call("monica_contacts", { action: "update", contact: ada.id, how_you_met: "At Babbage's soirée" });
+    expect(v.met_through?.id === charles.id && v.first_met === "1833-06-05" && v.how_you_met === "At Babbage's soirée", JSON.stringify(v));
+    const w = await call("monica_contacts", { action: "update", contact: ada.id, first_met: "06-05", met_through: null });
+    expect(w.first_met === "--06-05" && !w.met_through, JSON.stringify(w));
+  });
   await check("contacts update clears with null", async () => {
     const u = await call("monica_contacts", { action: "update", contact: ada.id, description: null, birthdate: null });
     expect(!u.description && !u.birthdate && u.nickname === "Enchantress", JSON.stringify(u));

@@ -16,7 +16,15 @@ const Profile = {
   description: z.string().max(1000).nullable().optional().describe("A short line about them"),
   job: z.string().max(255).nullable().optional(),
   company: z.string().max(255).nullable().optional(),
-  how_you_met: z.string().max(1000).nullable().optional(),
+  how_you_met: z.string().max(1000).nullable().optional().describe("How you met: the story"),
+  met_through: Contact.nullable().optional().describe("Who introduced you: a contact's name or id"),
+  first_met: z
+    .string()
+    .regex(/^(\d{4}-)?\d{2}-\d{2}$|^--\d{2}-\d{2}$/, "use YYYY-MM-DD, or MM-DD when the year isn't known")
+    .nullable()
+    .optional()
+    .describe("When you first met: YYYY-MM-DD, or MM-DD if the year isn't known; null clears it"),
+  first_met_reminder: z.boolean().optional().describe("With first_met: a yearly reminder of the day"),
   deceased: z.boolean().optional(),
   deceased_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().describe("YYYY-MM-DD"),
 };
@@ -103,8 +111,36 @@ async function extras(ctx: Ctx, id: number, input: any) {
       company: input.company !== undefined ? input.company : cur.company ?? null,
     });
   }
-  if (input.how_you_met !== undefined) {
-    await ctx.monica.req("PUT", `/contacts/${id}/introduction`, { general_information: input.how_you_met, is_date_known: false });
+  // "How you met" is replaced as a whole too: start from what's there
+  if ([input.how_you_met, input.met_through, input.first_met, input.first_met_reminder].some((v) => v !== undefined)) {
+    const cur = (await ctx.monica.req("GET", `/contacts/${id}`)).data.information?.how_you_met ?? {};
+    const met = cur.first_met_date ?? {};
+    const body: Record<string, any> = {
+      general_information: input.how_you_met !== undefined ? input.how_you_met : cur.general_information ?? null,
+      met_through_contact_id:
+        input.met_through === undefined ? cur.first_met_through_contact?.id ?? null : input.met_through === null ? null : (await ctx.resolve.contact(input.met_through)).id,
+      is_date_known: !!met.date,
+      is_age_based: !!met.is_age_based,
+      day: null,
+      month: null,
+      year: null,
+      age: null,
+      add_reminder: input.first_met_reminder ?? false,
+    };
+    if (met.date && !met.is_age_based) {
+      body.day = Number(met.date.slice(8, 10));
+      body.month = Number(met.date.slice(5, 7));
+      if (!met.is_year_unknown) body.year = Number(met.date.slice(0, 4));
+    } else if (met.date) body.age = new Date().getFullYear() - new Date(met.date).getFullYear();
+    if (input.first_met !== undefined) {
+      Object.assign(body, { is_date_known: input.first_met !== null, is_age_based: false, day: null, month: null, year: null, age: null });
+      if (input.first_met) {
+        const parts = input.first_met.replace(/^--/, "").split("-").map(Number);
+        if (parts.length === 3) [body.year, body.month, body.day] = parts;
+        else [body.month, body.day] = parts;
+      }
+    }
+    await ctx.monica.req("PUT", `/contacts/${id}/introduction`, body);
   }
 }
 

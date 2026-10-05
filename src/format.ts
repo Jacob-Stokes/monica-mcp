@@ -15,6 +15,12 @@ export function birthdate(info: any) {
   return b.is_year_unknown ? `--${b.date.slice(5, 10)}` : day(b.date);
 }
 
+function firstMet(d: any) {
+  if (!d?.date) return null;
+  if (d.is_age_based) return `about ${new Date().getFullYear() - new Date(d.date).getFullYear()} years ago`;
+  return d.is_year_unknown ? `--${d.date.slice(5, 10)}` : day(d.date);
+}
+
 export function contactSummary(c: any) {
   return clean({
     id: c.id,
@@ -44,7 +50,8 @@ export function contactDetail(c: any) {
     ...contactSummary(c),
     description: c.description,
     how_you_met: info.how_you_met?.general_information,
-    first_met: day(info.how_you_met?.first_met_date?.date),
+    met_through: who(info.how_you_met?.first_met_through_contact),
+    first_met: firstMet(info.how_you_met?.first_met_date),
     food_preferences: info.food_preferences,
     deceased_date: day(info.dates?.deceased_date?.date),
     stay_in_touch_every_days: c.stay_in_touch_frequency,

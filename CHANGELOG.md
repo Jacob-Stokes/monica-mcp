@@ -9,7 +9,7 @@ A rewrite: fewer, clearer tools, and checked against a real Monica 4.1.2.
 - Invalid input is refused before reaching Monica, with what's allowed.
 - Deleting anything needs `confirm: true`.
 - Updates keep every field that isn't given: Monica's update API clears fields left out (a contact's birthdate, for one), so the server sends the current values with the change.
-- Contact updates also cover `job`, `company` and `how_you_met`.
+- Contact updates also cover `job`, `company` and how they met: the story, who introduced them, when they first met and an optional yearly reminder (`how_you_met`, `met_through`, `first_met`, `first_met_reminder`), building on [#5](https://github.com/Jacob-Stokes/monica-mcp/pull/5) by @Mihai-P.
 - `monica_reminders` lists reminders by when they next come round, including repeating ones.
 - New: `monica_journal`.
 - Removed: groups, which Monica 4's API doesn't have, and the two resources, whose content `monica_contacts get` returns.
