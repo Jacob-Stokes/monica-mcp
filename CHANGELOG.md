@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.1
+
+- `monica_contacts list` sorted by name (the default) failed: Monica's API can't sort contacts by name. The server now sorts them itself.
+
 ## 2.1.0
 
 - `MONICA_API_TOKEN_FILE`: read the Monica API token from a file instead of `MONICA_API_TOKEN`, for example one written by a setup container. The file is read again when it changes, so a token can be replaced without restarting the server.

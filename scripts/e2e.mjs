@@ -85,7 +85,13 @@ try {
     expect(!u.description && !u.birthdate && u.nickname === "Enchantress", JSON.stringify(u));
   });
   await check("contacts search", async () => { const s = await call("monica_contacts", { action: "search", query: run }); expect(s.total === 2, `total ${s.total}`); });
-  await check("contacts list", async () => { const l = await call("monica_contacts", { action: "list", sort: "recently_added", limit: 5 }); expect(l.contacts.some((c) => c.id === ada.id), "missing"); });
+  await check("contacts list (by name, the default, and recently added)", async () => {
+    const byName = await call("monica_contacts", { action: "list", limit: 100 });
+    const names = byName.contacts.map((c) => c.name);
+    expect(names.join("|") === [...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })).join("|"), `not sorted: ${names}`);
+    const recent = await call("monica_contacts", { action: "list", sort: "recently_added", limit: 5 });
+    expect(recent.contacts.some((c) => c.id === ada.id), "missing");
+  });
   await check("a name that matches several contacts is refused, with ids", () => expectError("monica_contacts", { action: "get", contact: "E2E" }, /matches 2 contacts.*id/));
   await check("an unknown gender lists the choices", () => expectError("monica_contacts", { action: "update", contact: ada.id, gender: "Robot" }, /Choose one of: .*Woman/));
 
