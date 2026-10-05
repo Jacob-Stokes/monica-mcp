@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  # Every tool against a real Monica 4.1.2, set up from scratch here.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Start Monica
+        run: |
+          docker network create monica
+          docker run -d --name db --network monica -e MARIADB_RANDOM_ROOT_PASSWORD=1 \
+            -e MARIADB_DATABASE=monica -e MARIADB_USER=monica -e MARIADB_PASSWORD=secret mariadb:11.4
+          docker run -d --name monica --network monica -p 8080:80 \
+            -e APP_KEY="base64:$(openssl rand -base64 32)" -e APP_ENV=production -e APP_URL=http://localhost:8080 \
+            -e DB_HOST=db -e DB_DATABASE=monica -e DB_USERNAME=monica -e DB_PASSWORD=secret \
+            -e RATE_LIMIT_PER_MINUTE_API=1000 monica:4.1.2-apache
+          for i in $(seq 1 90); do curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/ | grep -qE '200|302' && break; sleep 2; done
+          docker exec monica php artisan setup:production --force --email=e2e@example.com --password=e2e-password -n
+          docker exec monica php artisan passport:client --personal -n --name=e2e
+          TOKEN=$(docker exec -w /var/www/html monica php -r 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo App\Models\User\User::first()->createToken("e2e")->accessToken;' | tail -1)
+          echo "::add-mask::$TOKEN"
+          echo "MONICA_API_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+      - run: npm ci && npm run build
+      - run: npm run e2e
+        env:
+          MONICA_BASE_URL: http://localhost:8080
+      - if: failure()
+        run: docker logs --tail 50 monica
