@@ -1,6 +1,7 @@
 // Monica's REST API (Monica 4, "classic": /api/...). One request at a time
 // through `req`; lists through `list`, which follows Monica's pagination.
 
+import { readFileSync, statSync } from "node:fs";
 import type { Config } from "./config.js";
 
 export class MonicaError extends Error {
@@ -35,17 +36,33 @@ function explain(body: any): string {
 export class MonicaClient {
   private base: string;
 
-  constructor(private cfg: Pick<Config, "MONICA_BASE_URL" | "MONICA_API_TOKEN" | "MONICA_TOKEN_TYPE" | "MONICA_USER_TOKEN" | "MONICA_TIMEOUT_MS">) {
+  private fileToken = { mtime: 0, value: "" };
+
+  constructor(private cfg: Pick<Config, "MONICA_BASE_URL" | "MONICA_API_TOKEN" | "MONICA_API_TOKEN_FILE" | "MONICA_TOKEN_TYPE" | "MONICA_USER_TOKEN" | "MONICA_TIMEOUT_MS">) {
     this.base = cfg.MONICA_BASE_URL.replace(/\/+$/, "") + "/api";
+  }
+
+  // MONICA_API_TOKEN, or the token file, re-read whenever it changes
+  private token(): string {
+    const file = this.cfg.MONICA_API_TOKEN_FILE;
+    if (!file) return this.cfg.MONICA_API_TOKEN ?? "";
+    try {
+      const mtime = statSync(file).mtimeMs;
+      if (mtime !== this.fileToken.mtime) this.fileToken = { mtime, value: readFileSync(file, "utf8").trim() };
+    } catch {
+      throw new MonicaError("GET", "", 0, `can't read the token file ${file}`);
+    }
+    return this.fileToken.value;
   }
 
   private headers(): Record<string, string> {
     const h: Record<string, string> = { Accept: "application/json" };
-    if (this.cfg.MONICA_TOKEN_TYPE === "apiKey") h["X-Api-Key"] = this.cfg.MONICA_API_TOKEN;
+    const token = this.token();
+    if (this.cfg.MONICA_TOKEN_TYPE === "apiKey") h["X-Api-Key"] = token;
     else if (this.cfg.MONICA_TOKEN_TYPE === "legacy") {
-      h["X-Auth-Token"] = this.cfg.MONICA_API_TOKEN;
+      h["X-Auth-Token"] = token;
       h["X-User-Token"] = this.cfg.MONICA_USER_TOKEN ?? "";
-    } else h.Authorization = `Bearer ${this.cfg.MONICA_API_TOKEN}`;
+    } else h.Authorization = `Bearer ${token}`;
     return h;
   }
 
@@ -95,7 +112,7 @@ export class MonicaClient {
     }
     if (!res.ok || data?.error) {
       let detail = explain(data);
-      if (res.status === 401) detail = "the API token was refused (check MONICA_API_TOKEN and MONICA_TOKEN_TYPE)";
+      if (res.status === 401) detail = `the API token was refused (check ${this.cfg.MONICA_API_TOKEN_FILE ? "the token file" : "MONICA_API_TOKEN"} and MONICA_TOKEN_TYPE)`;
       if (res.status === 404 && !detail) detail = "not found";
       throw new MonicaError(method, path, res.status, detail || text.slice(0, 200));
     }

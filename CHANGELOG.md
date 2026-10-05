@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0
+
+- `MONICA_API_TOKEN_FILE`: read the Monica API token from a file instead of `MONICA_API_TOKEN`, for example one written by a setup container. The file is read again when it changes, so a token can be replaced without restarting the server.
+
 ## 2.0.0
 
 A rewrite: fewer, clearer tools, and checked against a real Monica 4.1.2.

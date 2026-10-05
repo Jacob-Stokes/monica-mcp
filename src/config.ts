@@ -5,7 +5,7 @@
 import { existsSync } from "node:fs";
 import { z } from "zod";
 
-if (existsSync(".env") && !process.env.MONICA_API_TOKEN) {
+if (existsSync(".env") && !process.env.MONICA_API_TOKEN && !process.env.MONICA_API_TOKEN_FILE) {
   try {
     process.loadEnvFile(".env");
   } catch {
@@ -15,9 +15,10 @@ if (existsSync(".env") && !process.env.MONICA_API_TOKEN) {
 
 const Env = z.object({
   MONICA_BASE_URL: z.string().url().default("https://app.monicahq.com"),
-  MONICA_API_TOKEN: z
-    .string({ required_error: "required: a Monica API token (in Monica: Settings → API → Personal access token)" })
-    .min(1, "required: a Monica API token (in Monica: Settings → API → Personal access token)"),
+  MONICA_API_TOKEN: z.string().min(1).optional(),
+  // a file holding the token instead (e.g. written by a setup container);
+  // re-read when it changes, so the token can be rotated without a restart
+  MONICA_API_TOKEN_FILE: z.string().min(1).optional(),
   // bearer (default), apiKey (X-Api-Key) or legacy (X-Auth-Token + X-User-Token)
   MONICA_TOKEN_TYPE: z.enum(["bearer", "apiKey", "legacy"]).default("bearer"),
   MONICA_USER_TOKEN: z.string().optional(),
@@ -42,6 +43,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error(`monica-mcp: configuration problem\n${problems}`);
   }
   const c = parsed.data;
+  if (!c.MONICA_API_TOKEN && !c.MONICA_API_TOKEN_FILE) {
+    throw new Error("monica-mcp: configuration problem\n  MONICA_API_TOKEN: required: a Monica API token (in Monica: Settings → API → Personal access token), or MONICA_API_TOKEN_FILE: a file holding one");
+  }
   if (c.MONICA_TOKEN_TYPE === "legacy" && !c.MONICA_USER_TOKEN) {
     throw new Error("monica-mcp: MONICA_TOKEN_TYPE=legacy needs MONICA_USER_TOKEN too");
   }

@@ -11,10 +11,33 @@ test("configuration: the 1.x variable names work, and mistakes are explained", (
   const c = loadConfig({ MONICA_API_TOKEN: "t", MONICA_BASE_URL: "https://crm.example.com" });
   assert.equal(c.MONICA_TOKEN_TYPE, "bearer");
   assert.equal(c.MCP_TRANSPORT, "stdio");
-  assert.throws(() => loadConfig({}), /MONICA_API_TOKEN: required: a Monica API token/);
+  assert.throws(() => loadConfig({}), /MONICA_API_TOKEN: required: a Monica API token.*MONICA_API_TOKEN_FILE/s);
+  assert.equal(loadConfig({ MONICA_API_TOKEN_FILE: "/run/token" }).MONICA_API_TOKEN_FILE, "/run/token");
   assert.throws(() => loadConfig({ MONICA_API_TOKEN: "t", MONICA_TOKEN_TYPE: "legacy" }), /MONICA_USER_TOKEN/);
   assert.throws(() => loadConfig({ MONICA_API_TOKEN: "t", MCP_TRANSPORT: "http" }), /needs MCP_BEARER_TOKEN/);
   assert.equal(loadConfig({ MONICA_API_TOKEN: "t", MCP_TRANSPORT: "http", MCP_BEARER_TOKEN: "b", PORT: "7011" }).PORT, 7011);
+});
+
+test("a token file is read, and read again when it changes", async () => {
+  const { MonicaClient } = await import("../dist/monica.js");
+  const { mkdtempSync, writeFileSync, utimesSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const file = join(mkdtempSync(join(tmpdir(), "token-")), "token");
+  writeFileSync(file, "first\n");
+  const seen = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => { seen.push(init.headers.Authorization); return new Response(JSON.stringify({ data: {} }), { status: 200 }); };
+  try {
+    const m = new MonicaClient({ MONICA_BASE_URL: "http://monica", MONICA_API_TOKEN_FILE: file, MONICA_TOKEN_TYPE: "bearer", MONICA_TIMEOUT_MS: 1000 });
+    await m.req("GET", "/me");
+    writeFileSync(file, "second");
+    utimesSync(file, new Date(), new Date(Date.now() + 5000));
+    await m.req("GET", "/me");
+    assert.deepEqual(seen, ["Bearer first", "Bearer second"]);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });
 
 test("every tool has a flat object schema, a description and annotations", () => {
